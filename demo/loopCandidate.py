@@ -1,9 +1,9 @@
 import os
 import threading
 
-tickers = eval("['VNET', 'IOTS', 'AFMD', 'ALT', 'AMRN', 'AMOV', 'AMRS', 'APDN', 'AQMS', 'ABIO', 'FUV', 'ARKR', 'ASTC', 'ATOS', 'AVT', 'BIOL', 'BMRA', 'BNTX', 'BLNK', 'CNTG', 'CHEK', 'CAAS', 'CCRC', 'CJJD', 'CLEU', 'CORT', 'COWN', 'CRSA', 'EKSO', 'ENTX', 'EVLO', 'EVK', 'EVOK', 'FPRX', 'FRAN', 'HUGE', 'FFHL', 'GNMK', 'GTEC', 'GRNQ', 'HHR', 'HYMC', 'ICON', 'IDEX', 'INVA', 'INSU', 'JAKK', 'KZIA', 'KIRK', 'KTOV', 'LMST', 'LPCN', 'MARA', 'MDGS', 'MTSL', 'MGEN', 'MOTS', 'NAKD', 'NK', 'OSS', 'PHIO', 'PLXP', 'PRPO', 'RIBT', 'RIOT', 'SGBX', 'PIXY', 'SINT', 'SKYS', 'SNGX', 'SNOA', 'SONO', 'STAA', 'STAF', 'MITO', 'WISA', 'SNSS', 'SPRT', 'SNCR', 'TESS', 'PECK', 'THTX', 'THMO', 'TRIB', 'TRUP', 'MEDS', 'USAU', 'USWS', 'XELB', 'XTLB', 'YIN', 'ZVO', 'ALO', 'AWX', 'JOB', 'SIM', 'IHT', 'MMX', 'SNMP', 'SMTS', 'TAT', 'VOLT', 'AAP', 'AMOV', 'ASA', 'BOX', 'BEDU', 'CHRA', 'CWEN', 'CCR', 'CLGX', 'CELP', 'HCR', 'NVTA', 'MNK', 'MODN', 'MYOV', 'JPI', 'ROYT', 'TECK', 'SHLL', 'UBA', 'SPCE']")
+tickers = eval("['AXAS', 'AKER', 'APYX', 'FUV', 'BCYC', 'BOXL', 'BWEN', 'CLRB', 'CJJD', 'CNET', 'CNSP', 'CODX', 'CRIS', 'CYAN', 'CYCN', 'DAIO', 'DTSS', 'DXLG', 'DISCB', 'DOGZ', 'MOHO', 'ELTK', 'ENLV', 'EVSI', 'EVGN', 'XELA', 'FOCS', 'FFHL', 'GNUS', 'GLBS', 'GSMG', 'GRIN', 'GO', 'GHSI', 'HEPA', 'HIHO', 'HUIZ', 'HYRE', 'ICLR', 'IEC', 'IEA', 'INO', 'JOUT', 'KMDA', 'KTOV', 'LSBK', 'LE', 'LTRPB', 'LLEX', 'LMB', 'LLNW', 'LMNL', 'LONE', 'LKCO', 'MICT', 'MTP', 'GRIL', 'NNDM', 'NMCI', 'NCSM', 'NEPT', 'STIM', 'NOVN', 'OFED', 'OCGN', 'ONCY', 'SEED', 'OTIC', 'PENN', 'PSHG', 'PPIH', 'PLUG', 'PFIE', 'PROF', 'PXS', 'RAVE', 'RCON', 'RFIL', 'RELL', 'SHIP', 'SLS', 'SNES', 'SINO', 'SLGL', 'SPI', 'STRM', 'WISA', 'SCON', 'TLGT', 'TOPS', 'TRCH', 'TACT', 'TBIO', 'TC', 'TOUR', 'WIMI', 'YTEN', 'CTIB', 'ZN', 'AE', 'BRN', 'BIOX', 'DXF', 'ENSV', 'HUSA', 'INFU', 'IHT', 'LLEX', 'MTNB', 'NNVC', 'PTN', 'XPL', 'AMRC', 'CEL', 'CEPU', 'XRF', 'CMRE', 'DVD', 'DLNG', 'FSLY', 'GPRK', 'GOL', 'HEQ', 'MHK', 'PFGC', 'QD', 'SQNS', 'EGY', 'IAE', 'EHI', 'HIX', 'YETI', 'DAO', 'ZYME']")
 
-threadcount = 8
+threadcount = 10
 
 def job(id):
     size = (int)(len(tickers) / threadcount)
@@ -14,7 +14,7 @@ def job(id):
         print("Thread %d from %d to %d" % (id, size * id, size * (id + 1)))
         tickers_t = tickers[size * id : size * (id + 1)]
     for ticker in tickers_t:
-        command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/test1.py --symbol '%s'" % ticker
+        command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/strategy1.py --no-log --symbol '%s'" % ticker
         os.system(command)
 
 threads = []

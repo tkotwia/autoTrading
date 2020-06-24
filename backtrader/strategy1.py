@@ -112,8 +112,6 @@ class TestStrategy(bt.Strategy):
                     self.lastbuydate = self.datas[0].datetime.date(0)
 
     def kelly(self):
-        if (self.datas[0].datetime.date(0) != self.lastbuydate):
-            return 0
         history = []
         wincount = 0
         losscount = 0
@@ -168,7 +166,9 @@ class TestStrategy(bt.Strategy):
             elif i < 0:
                 losscount += 1
         self.log(history)
-        self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d exception %d' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, self.exceptioncount), doprint=True)
+
+        if self.params.printlog or self.datas[0].datetime.date(0) == self.lastbuydate:
+            self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d exception %d' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, self.exceptioncount), doprint=True)
 
 def parse_args(pargs=None):
     parser = argparse.ArgumentParser(
@@ -200,8 +200,8 @@ if __name__ == '__main__':
 
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
-    modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/orcl-1995-2014.txt')
+    #modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
+    #datapath = os.path.join(modpath, '../../datas/orcl-1995-2014.txt')
 
     # Create a Data Feed
     data = bt.feeds.YahooFinanceData(
@@ -217,7 +217,7 @@ if __name__ == '__main__':
     cerebro.adddata(data)
 
     # Set our desired cash start
-    cerebro.broker.setcash(100000.0)
+    cerebro.broker.setcash(1000000.0)
 
     # Set the commission
     cerebro.broker.setcommission(commission=0.0)
