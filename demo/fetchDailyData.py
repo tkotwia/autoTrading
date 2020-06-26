@@ -77,7 +77,7 @@ def job(id):
         volumn = hist['Volume']
         close = hist['Close']
         print("Thread %d processing %s" %(id, ticker))
-        if (len(volumn) >= 5 and (volumn[2] + volumn[3]) < volumn[4] and (close[4] - close[3]) / close[3] > 0.03):
+        if (len(volumn) >= 5 and volumn[4] > 100000 and (volumn[2] + volumn[3]) < volumn[4] and (close[4] - close[3]) / close[3] > 0.03):
             candidates[id].append(ticker)
     #    command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/strategy1.py --no-log --symbol '%s'" % ticker
     #    os.system(command)

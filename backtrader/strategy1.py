@@ -105,6 +105,7 @@ class TestStrategy(bt.Strategy):
         if not self.position:
             if self.datavolume[0] > self.datavolume[-1] + self.datavolume[-2]:
                 if ((self.dataclose[0] - self.dataclose[-1]) / self.dataclose[-1]) > self.stoplimit and \
+                    ((self.dataopen[0] - self.dataclose[0]) / self.dataopen[0]) < self.stoplimit and \
                     self.sma5[0] > self.sma20[0] and self.sma5[0] > self.sma10[0] and self.sma10[0] > self.sma20[0]:
 
                     self.log('BUY CREATE, price %.2f ' % (self.dataclose[0]))
