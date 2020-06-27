@@ -178,9 +178,9 @@ class TestStrategy(bt.Strategy):
         self.log(history)
 
         if not self.params.printlog and self.datas[0].datetime.date(0) == self.lastbuydate:
-            self.log('%s %.2f %d/%d/%d %d/%d %.2f' % (self.getdatanames()[0], self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.buyexecutedcount/self.buycount), doprint=True)
+            self.log('%s %.2f %d/%d/%d %d/%d %.2f %d' % (self.getdatanames()[0], self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.buyexecutedcount/self.buycount, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
         else:
-            self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d winexception %d lossexception %d executerate %.2f' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.buyexecutedcount/self.buycount), doprint=True)
+            self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d winexception %d lossexception %d executerate %.2f tradevalue %d' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.buyexecutedcount/self.buycount, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
 
 def parse_args(pargs=None):
     parser = argparse.ArgumentParser(
