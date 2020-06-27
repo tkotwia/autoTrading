@@ -37,8 +37,6 @@ class TestStrategy(bt.Strategy):
         self.winexception = 0
         self.lossexception = 0
         self.lastbuydate = None
-        self.buycount = 0
-        self.buyexecutedcount = 0
 
         # Add a MovingAverageSimple indicator
         self.sma5 = bt.indicators.SimpleMovingAverage(
@@ -57,7 +55,6 @@ class TestStrategy(bt.Strategy):
         # Attention: broker could reject order if not enough cash
         if order.status in [order.Completed]:
             if order.isbuy():
-                self.buyexecutedcount +=1
                 self.log(
                     'BUY EXECUTED, Price: %.2f, Cost: %.2f' %
                     (order.executed.price,
@@ -68,8 +65,8 @@ class TestStrategy(bt.Strategy):
                 limit = order.executed.price * (1 + self.stoplimit)
                 stop = order.executed.price * (1 - self.stoplimit)
                 self.log('SELL CREATE limit %.2f stop %.2f'%  (limit, stop))
-                self.stoporder.append(self.sell(exectype = bt.Order.Limit, price=limit, valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage)))
-                self.stoporder.append(self.sell(exectype = bt.Order.StopLimit, price=stop, valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage)))
+                self.stoporder.append(self.sell(exectype = bt.Order.Limit, price=limit, valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage), transmit=False))
+                self.stoporder.append(self.sell(exectype = bt.Order.StopLimit, price=stop, parent=self.stoporder[0],valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage), transmit=True))
                 return
             else:  # Sell
                 self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f' %
@@ -109,12 +106,11 @@ class TestStrategy(bt.Strategy):
         if not self.position:
             if self.datavolume[0] > self.datavolume[-1] + self.datavolume[-2]:
                 if ((self.dataclose[0] - self.dataclose[-1]) / self.dataclose[-1]) > self.stoplimit and \
-                    ((self.dataopen[0] - self.dataclose[0]) / self.dataopen[0]) < self.stoplimit and \
                     self.sma5[0] > self.sma20[0] and self.sma5[0] > self.sma10[0] and self.sma10[0] > self.sma20[0]:
 
-                    self.buycount += 1
                     self.log('BUY CREATE, price %.2f ' % (self.dataclose[0]))
-                    self.buy(exectype = bt.Order.Limit, price=self.dataclose[0], valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=2))
+                    # self.buy(exectype = bt.Order.Limit, price=self.dataclose[0], valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=2))
+                    self.buy()
                     self.lastbuydate = self.datas[0].datetime.date(0)
 
     def kelly(self):
@@ -132,11 +128,12 @@ class TestStrategy(bt.Strategy):
             else:
                 history.append(i)
 
-            if (i >= 0):
+            if (i > 0):
                 wincount += 1
+                totalcount += 1
             elif (i < 0):
                 losscount += 1
-            totalcount += 1
+                totalcount += 1
         
         if totalcount == 0:
             return 0
@@ -170,17 +167,19 @@ class TestStrategy(bt.Strategy):
         tradecount = 0
         for i in self.history:
             history += " %.1f" % (i * 100)
-            tradecount += 1
             if i > 0:
                 wincount += 1
+                tradecount += 1
             elif i < 0:
                 losscount += 1
+                tradecount += 1
         self.log(history)
 
-        if not self.params.printlog and self.datas[0].datetime.date(0) == self.lastbuydate:
-            self.log('%s %.2f %d/%d/%d %d/%d %.2f %d' % (self.getdatanames()[0], self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.buyexecutedcount/self.buycount, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
+        if not self.params.printlog:
+            if self.datas[0].datetime.date(0) == self.lastbuydate:
+                self.log('%s %.2f %d/%d/%d %d/%d %d' % (self.getdatanames()[0], self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
         else:
-            self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d winexception %d lossexception %d executerate %.2f tradevalue %d' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.buyexecutedcount/self.buycount, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
+            self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d winexception %d lossexception %d tradevalue %d' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
 
 def parse_args(pargs=None):
     parser = argparse.ArgumentParser(

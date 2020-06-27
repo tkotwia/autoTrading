@@ -13,12 +13,16 @@ for root, dirs, files in os.walk('/home/gene/git/autoTrading/demo/data'):
 # fullpaths = fullpaths[0:10]
 threadcount = 10
 
+mintradevalue = 100000000
+
 def iscandidate(path):
     try:
         df = pandas.read_csv(path)
     except:
         return False
-    if len(df.index) > 100 and (int)(df['<VOL>'].iloc[-1]) > (int)(df['<VOL>'].iloc[-2]) + (int)(df['<VOL>'].iloc[-3]):
+    if len(df.index) > 100 and \
+        (int)(df['<VOL>'].iloc[-1]) > (int)(df['<VOL>'].iloc[-2]) + (int)(df['<VOL>'].iloc[-3]) and\
+        (int)(df['<VOL>'].iloc[-1]) * (float)(df['<CLOSE>'].iloc[-1]) > mintradevalue:
         return True
     return False
 
