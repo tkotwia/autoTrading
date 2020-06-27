@@ -195,7 +195,28 @@ def parse_args(pargs=None):
     parser.add_argument('--source', required=False, default='yahoo', help='source type')
 
     return parser.parse_args()
-    
+
+def load_generic_data(symbol, start, end):
+    filename = symbol.lower() + '.us.txt'
+    for root, dirs, files in os.walk('/home/gene/git/autoTrading/demo/data'):
+        for name in files:
+            if name == filename:
+                datapath = os.path.abspath(os.path.join(root, name))
+    data = bt.feeds.GenericCSVData(
+        dataname=datapath,
+        fromdate=start,
+        todate=end,
+        dtformat='%Y%m%d',
+        datetime=2,
+        open=4,
+        high=5,
+        low=6,
+        close=7,
+        volume=8,
+        openinterest=9
+    )
+    return data
+
 if __name__ == '__main__':
 
     args = parse_args()
@@ -213,31 +234,11 @@ if __name__ == '__main__':
         # Create a Data Feed
         data = bt.feeds.YahooFinanceData(
             dataname=args.symbol,
-            # Do not pass values before this date
             fromdate=datetime.datetime(1990, 1, 1),
-            # Do not pass values before this date
             todate=datetime.datetime.now(),
-            # Do not pass values after this date
             reverse=False)
     elif args.source == 'local':
-        filename = args.symbol.lower() + '.us.txt'
-        for root, dirs, files in os.walk('/home/gene/git/autoTrading/demo/data'):
-            for name in files:
-                if name == filename:
-                    datapath = os.path.abspath(os.path.join(root, name))
-        data = bt.feeds.GenericCSVData(
-            dataname=datapath,
-            fromdate=datetime.datetime(1990, 1, 1),
-            todate=datetime.datetime.now(),
-            dtformat='%Y%m%d',
-            datetime=2,
-            open=4,
-            high=5,
-            low=6,
-            close=7,
-            volume=8,
-            openinterest=9
-        )
+        data = load_generic_data(args.symbol, datetime.datetime(1990, 1, 1), datetime.datetime.now())
 
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
