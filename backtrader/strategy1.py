@@ -34,8 +34,11 @@ class TestStrategy(bt.Strategy):
         self.age = 0
         self.stoplimit = self.p.stoplimit / 100
         self.history = []
-        self.exceptioncount = 0
+        self.winexception = 0
+        self.lossexception = 0
         self.lastbuydate = None
+        self.buycount = 0
+        self.buyexecutedcount = 0
 
         # Add a MovingAverageSimple indicator
         self.sma5 = bt.indicators.SimpleMovingAverage(
@@ -54,6 +57,7 @@ class TestStrategy(bt.Strategy):
         # Attention: broker could reject order if not enough cash
         if order.status in [order.Completed]:
             if order.isbuy():
+                self.buyexecutedcount +=1
                 self.log(
                     'BUY EXECUTED, Price: %.2f, Cost: %.2f' %
                     (order.executed.price,
@@ -108,6 +112,7 @@ class TestStrategy(bt.Strategy):
                     ((self.dataopen[0] - self.dataclose[0]) / self.dataopen[0]) < self.stoplimit and \
                     self.sma5[0] > self.sma20[0] and self.sma5[0] > self.sma10[0] and self.sma10[0] > self.sma20[0]:
 
+                    self.buycount += 1
                     self.log('BUY CREATE, price %.2f ' % (self.dataclose[0]))
                     self.buy(exectype = bt.Order.Limit, price=self.dataclose[0], valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=2))
                     self.lastbuydate = self.datas[0].datetime.date(0)
@@ -120,9 +125,10 @@ class TestStrategy(bt.Strategy):
         for i in self.history:
             if (i > 0.05):
                 history.append(0.05)
+                self.winexception += 1
             elif i < -0.05:
                 history.append(-0.05)
-                self.exceptioncount += 1
+                self.lossexception += 1
             else:
                 history.append(i)
 
@@ -132,11 +138,11 @@ class TestStrategy(bt.Strategy):
                 losscount += 1
             totalcount += 1
         
-        if totalcount <= 4:
+        if totalcount == 0:
             return 0
-        elif losscount == 0:
+        if losscount == 0:
             return 1
-        elif wincount == 0:
+        if wincount == 0:
             return 0
 
         p = wincount / totalcount
@@ -150,6 +156,9 @@ class TestStrategy(bt.Strategy):
             if i < 0:
                 expect_loss += (i * -1)
         b = (expect_win / wincount) / (expect_loss / losscount)
+
+        if b == 0:
+            return 0
 
         self.log('p %.2f q %.2f b %.2f' % (p, q, b))
         return p - (q / b)
@@ -168,21 +177,23 @@ class TestStrategy(bt.Strategy):
                 losscount += 1
         self.log(history)
 
-        if self.params.printlog or self.datas[0].datetime.date(0) == self.lastbuydate:
-            self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d exception %d' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, self.exceptioncount), doprint=True)
+        if not self.params.printlog and self.datas[0].datetime.date(0) == self.lastbuydate:
+            self.log('%s %.2f %d/%d/%d %d/%d %.2f' % (self.getdatanames()[0], self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.buyexecutedcount/self.buycount), doprint=True)
+        else:
+            self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d winexception %d lossexception %d executerate %.2f' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.buyexecutedcount/self.buycount), doprint=True)
 
 def parse_args(pargs=None):
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Sample for Order Target')
 
-    parser.add_argument('--symbol', required=False,
-                        default='MSFT',
-                        help='Symbol to backtest')
+    parser.add_argument('--symbol', required=False, default='MSFT', help='Symbol to backtest')
 
     parser.add_argument('--log', dest='printlog', action='store_true', help = 'enable log')
     parser.add_argument('--no-log', dest='printlog', action='store_false', help = 'disable log')
     parser.set_defaults(printlog=True)
+
+    parser.add_argument('--source', required=False, default='yahoo', help='source type')
 
     return parser.parse_args()
     
@@ -199,20 +210,35 @@ if __name__ == '__main__':
 
     strats = cerebro.addstrategy(TestStrategy, printlog = args.printlog)
 
-    # Datas are in a subfolder of the samples. Need to find where the script is
-    # because it could have been called from anywhere
-    #modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    #datapath = os.path.join(modpath, '../../datas/orcl-1995-2014.txt')
-
-    # Create a Data Feed
-    data = bt.feeds.YahooFinanceData(
-        dataname=args.symbol,
-        # Do not pass values before this date
-        fromdate=datetime.datetime(2005, 6, 6),
-        # Do not pass values before this date
-        todate=datetime.datetime.now(),
-        # Do not pass values after this date
-        reverse=False)
+    if args.source == 'yahoo':
+        # Create a Data Feed
+        data = bt.feeds.YahooFinanceData(
+            dataname=args.symbol,
+            # Do not pass values before this date
+            fromdate=datetime.datetime(1990, 1, 1),
+            # Do not pass values before this date
+            todate=datetime.datetime.now(),
+            # Do not pass values after this date
+            reverse=False)
+    elif args.source == 'local':
+        filename = args.symbol.lower() + '.us.txt'
+        for root, dirs, files in os.walk('/home/gene/git/autoTrading/demo/data'):
+            for name in files:
+                if name == filename:
+                    datapath = os.path.abspath(os.path.join(root, name))
+        data = bt.feeds.GenericCSVData(
+            dataname=datapath,
+            fromdate=datetime.datetime(1990, 1, 1),
+            todate=datetime.datetime.now(),
+            dtformat='%Y%m%d',
+            datetime=2,
+            open=4,
+            high=5,
+            low=6,
+            close=7,
+            volume=8,
+            openinterest=9
+        )
 
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
