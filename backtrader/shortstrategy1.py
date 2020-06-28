@@ -54,9 +54,9 @@ class TestStrategy(bt.Strategy):
         # Check if an order has been completed
         # Attention: broker could reject order if not enough cash
         if order.status in [order.Completed]:
-            if order.isbuy():
+            if order.issell():
                 self.log(
-                    'BUY EXECUTED, Price: %.2f, Cost: %.2f' %
+                    'SELL EXECUTED, Price: %.2f, Cost: %.2f' %
                     (order.executed.price,
                     order.executed.value))
 
@@ -64,12 +64,12 @@ class TestStrategy(bt.Strategy):
 
                 limit = order.executed.price * (1 + self.stoplimit)
                 stop = order.executed.price * (1 - self.stoplimit)
-                self.log('SELL CREATE limit %.2f stop %.2f'%  (limit, stop))
-                self.stoporder.append(self.sell(exectype = bt.Order.Limit, price=limit, valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage), transmit=False))
-                self.stoporder.append(self.sell(exectype = bt.Order.StopLimit, price=stop, parent=self.stoporder[0],valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage), transmit=True))
+                self.log('BUY CREATE limit %.2f stop %.2f'%  (limit, stop))
+                self.stoporder.append(self.buy(exectype = bt.Order.Limit, price=limit, valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage), transmit=False))
+                self.stoporder.append(self.buy(exectype = bt.Order.StopLimit, price=stop, parent=self.stoporder[0],valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage), transmit=True))
                 return
-            else:  # Sell
-                self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f' %
+            else:  # BUY
+                self.log('BUY EXECUTED, Price: %.2f, Cost: %.2f' %
                         (order.executed.price,
                         order.executed.value))  
                 for o in self.stoporder:
@@ -104,13 +104,11 @@ class TestStrategy(bt.Strategy):
     def next(self):
         # Check if we are in the market
         if not self.position:
-            if self.datavolume[0] > self.datavolume[-1] + self.datavolume[-2]:
-                if ((self.dataclose[0] - self.dataclose[-1]) / self.dataclose[-1]) > self.stoplimit and \
-                    self.sma5[0] > self.sma20[0] and self.sma5[0] > self.sma10[0] and self.sma10[0] > self.sma20[0]:
+            if self.datavolume[0] < self.datavolume[-1]:
+                if ((self.dataclose[0] - self.dataclose[-1]) / self.dataclose[-1]) > self.stoplimit:
 
-                    self.log('BUY CREATE, price %.2f ' % (self.dataclose[0]))
-                    # self.buy(exectype = bt.Order.Limit, price=self.dataclose[0], valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=2))
-                    self.buy()
+                    self.log('SELL CREATE, price %.2f ' % (self.dataclose[0]))
+                    self.sell()
                     self.lastbuydate = self.datas[0].datetime.date(0)
 
     def kelly(self):
@@ -177,7 +175,7 @@ class TestStrategy(bt.Strategy):
 
         if not self.params.printlog:
             if self.datas[0].datetime.date(0) == self.lastbuydate:
-                self.log('%s %.2f %d/%d/%d %d/%d %d' % (self.getdatanames()[0], self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
+                self.log('%s, %.2f, %d/%d/%d, %d/%d, %d' % (self.getdatanames()[0], self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
         else:
             self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d winexception %d lossexception %d tradevalue %d' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
 
@@ -252,4 +250,4 @@ if __name__ == '__main__':
     # Run over everything
     cerebro.run(maxcpus=1)
 
-    #cerebro.plot()
+    # cerebro.plot()

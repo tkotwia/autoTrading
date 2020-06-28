@@ -14,7 +14,7 @@ def job(id):
         print("Thread %d from %d to %d" % (id, size * id, size * (id + 1)))
         tickers_t = tickers[size * id : size * (id + 1)]
     for ticker in tickers_t:
-        command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/strategy1.py --no-log --symbol '%s'" % ticker
+        command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/longstrategy1.py --no-log --symbol '%s'" % ticker
         os.system(command)
 
 threads = []
