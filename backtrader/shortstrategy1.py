@@ -5,6 +5,7 @@ import datetime  # For datetime objects
 import os.path  # To manage paths
 import sys  # To find out the script name (in argv[0])
 import argparse
+import statistics
 
 # Import the backtrader platform
 import backtrader as bt
@@ -14,12 +15,12 @@ class TestStrategy(bt.Strategy):
     params = (
         ('stoplimit', 3),
         ('maxage', 2),
-        ('printlog', True)
+        ('printlog', 'full')
     )
 
     def log(self, txt, dt=None, doprint=False):
         ''' Logging function fot this strategy'''
-        if self.params.printlog or doprint:
+        if self.params.printlog == 'full' or doprint:
             dt = dt or self.datas[0].datetime.date(0)
             print('%s, %s' % (dt.isoformat(), txt))
 
@@ -174,7 +175,7 @@ class TestStrategy(bt.Strategy):
                 tradecount += 1
         self.log(history)
 
-        if not self.params.printlog:
+        if self.params.printlog == 'csv':
             if self.datas[0].datetime.date(0) == self.lastbuydate:
                 self.log('%s, %.2f, %d/%d/%d, %d/%d, %d' % (self.getdatanames()[0], self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
         else:
@@ -192,9 +193,7 @@ def parse_args(pargs=None):
 
     parser.add_argument('--symbol', required=False, default='MSFT', help='Symbol to backtest')
 
-    parser.add_argument('--log', dest='printlog', action='store_true', help = 'enable log')
-    parser.add_argument('--no-log', dest='printlog', action='store_false', help = 'disable log')
-    parser.set_defaults(printlog=True)
+    parser.add_argument('--log', required=False, default='full', help = 'log type')
 
     parser.add_argument('--source', required=False, default='yahoo', help='source type')
 
@@ -232,7 +231,7 @@ if __name__ == '__main__':
     #     TestStrategy,
     #     stoplimit=range(2, 4))
 
-    strats = cerebro.addstrategy(TestStrategy, printlog = args.printlog)
+    strats = cerebro.addstrategy(TestStrategy, printlog = args.log)
 
     start = datetime.datetime(2005, 1, 1)
     end = datetime.datetime.now()

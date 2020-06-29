@@ -51,12 +51,12 @@ def job(id, args):
         if args.type == 'long' and islongcandidate(fullpath):
             head, tail = os.path.split(fullpath)
             symbol = tail[0: tail.find('.us.txt')]
-            command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/longstrategy1.py --no-log --source 'local' --symbol '%s'" % symbol
+            command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/longstrategy1.py --log 'csv' --source 'local' --symbol '%s'" % symbol
             os.system(command)
         if args.type == 'short' and isshortcandidate(fullpath):
             head, tail = os.path.split(fullpath)
             symbol = tail[0: tail.find('.us.txt')]
-            command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/shortstrategy1.py --no-log --source 'local' --symbol '%s'" % symbol
+            command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/shortstrategy1.py --log 'csv' --source 'local' --symbol '%s'" % symbol
             os.system(command)
 
 def parse_args(pargs=None):
