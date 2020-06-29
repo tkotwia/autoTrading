@@ -106,9 +106,15 @@ class TestStrategy(bt.Strategy):
     def next(self):
         # Check if we are in the market
         if not self.position:
-            if self.datavolume[0] > self.datavolume[-1] + self.datavolume[-2]:
+            vols = []
+            for i in range(-1, -11, -1):
+                vols.append(self.datavolume[i])
+            
+            mean = statistics.mean(vols)
+            stdev = statistics.stdev(vols)
+            if self.datavolume[0] > mean + 2 * stdev:
                 if ((self.dataclose[0] - self.dataclose[-1]) / self.dataclose[-1]) > self.stoplimit and \
-                    self.sma5[0] > self.sma20[0] and self.sma5[0] > self.sma10[0] and self.sma10[0] > self.sma20[0]:
+                    self.sma5[0] > self.sma20[0]:
 
                     self.log('BUY CREATE, price %.2f ' % (self.dataclose[0]))
                     # self.buy(exectype = bt.Order.Limit, price=self.dataclose[0], valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=2))
