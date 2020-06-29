@@ -28,6 +28,7 @@ class TestStrategy(bt.Strategy):
         self.dataclose = self.datas[0].close
         self.dataopen = self.datas[0].open
         self.datavolume = self.datas[0].volume
+        self.benchmarkclose = self.datas[1].close
 
         # To keep track of pending orders and buy price/commission
         self.stoporder = []
@@ -105,8 +106,8 @@ class TestStrategy(bt.Strategy):
         # Check if we are in the market
         if not self.position:
             if self.datavolume[0] < self.datavolume[-1]:
-                if ((self.dataclose[0] - self.dataclose[-1]) / self.dataclose[-1]) > self.stoplimit:
-
+                diff = (self.benchmarkclose[0] - self.benchmarkclose[-1]) / self.benchmarkclose[-1]
+                if ((self.dataclose[0] - self.dataclose[-1]) / self.dataclose[-1]) - diff > self.stoplimit:
                     self.log('SELL CREATE, price %.2f ' % (self.dataclose[0]))
                     self.sell()
                     self.lastbuydate = self.datas[0].datetime.date(0)
@@ -177,7 +178,12 @@ class TestStrategy(bt.Strategy):
             if self.datas[0].datetime.date(0) == self.lastbuydate:
                 self.log('%s, %.2f, %d/%d/%d, %d/%d, %d' % (self.getdatanames()[0], self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
         else:
-            self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d winexception %d lossexception %d tradevalue %d' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, self.winexception, self.lossexception, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
+            if (tradecount == 0):
+                winrate = 0
+            else:
+                winrate = wincount / tradecount
+
+            self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d winrate %.2f winexception %d lossexception %d tradevalue %d' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, winrate, self.winexception, self.lossexception, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
 
 def parse_args(pargs=None):
     parser = argparse.ArgumentParser(
@@ -228,18 +234,27 @@ if __name__ == '__main__':
 
     strats = cerebro.addstrategy(TestStrategy, printlog = args.printlog)
 
+    start = datetime.datetime(2005, 1, 1)
+    end = datetime.datetime.now()
     if args.source == 'yahoo':
         # Create a Data Feed
         data = bt.feeds.YahooFinanceData(
             dataname=args.symbol,
-            fromdate=datetime.datetime(1990, 1, 1),
-            todate=datetime.datetime.now(),
+            fromdate=start,
+            todate=end,
+            reverse=False)
+        benchmark = bt.feeds.YahooFinanceData(
+            dataname='vti',
+            fromdate=start,
+            todate=end,
             reverse=False)
     elif args.source == 'local':
-        data = load_generic_data(args.symbol, datetime.datetime(1990, 1, 1), datetime.datetime.now())
+        data = load_generic_data(args.symbol, start, end)
+        benchmark = load_generic_data('vti', start, end)
 
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
+    cerebro.adddata(benchmark)
 
     # Set our desired cash start
     cerebro.broker.setcash(1000000.0)
