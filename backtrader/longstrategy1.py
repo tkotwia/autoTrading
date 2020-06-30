@@ -67,8 +67,8 @@ class TestStrategy(bt.Strategy):
                 limit = order.executed.price * (1 + self.stoplimit)
                 stop = order.executed.price * (1 - self.stoplimit)
                 self.log('SELL CREATE limit %.2f stop %.2f'%  (limit, stop))
-                self.stoporder.append(self.sell(exectype = bt.Order.Limit, price=limit, valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage), transmit=False))
-                self.stoporder.append(self.sell(exectype = bt.Order.StopLimit, price=stop, parent=self.stoporder[0],valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage), transmit=True))
+                self.stoporder.append(self.sell(exectype = bt.Order.Limit, price=limit, valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage)))
+                self.stoporder.append(self.sell(exectype = bt.Order.StopLimit, price=stop, valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage), oco=self.stoporder[0]))
                 return
             else:  # Sell
                 self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f' %
