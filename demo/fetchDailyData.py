@@ -32,16 +32,16 @@ def fetchTickerList():
     print('filtering out tickers...')
     tickersRawData = tickersRawData.dropna(subset=['MarketCap'])
 
-    # filter = tickersRawData['MarketCap'].str.contains('B')
+    filter = tickersRawData['MarketCap'].str.contains('B')
+    tickersRawData = tickersRawData[filter]
+
+    tickersRawData['MarketCap'] = tickersRawData['MarketCap'].map(lambda x: x.lstrip('$').rstrip('B'))
+    tickersRawData['MarketCap'] = tickersRawData['MarketCap'].astype(float)
+
+    tickersRawData = tickersRawData.sort_values(by = "MarketCap", ascending = False)
+
+    # filter = tickersRawData['MarketCap'] > 100.0
     # tickersRawData = tickersRawData[filter]
-
-    # tickersRawData['MarketCap'] = tickersRawData['MarketCap'].map(lambda x: x.lstrip('$').rstrip('B'))
-    # tickersRawData['MarketCap'] = tickersRawData['MarketCap'].astype(float)
-
-    # tickersRawData = tickersRawData.sort_values(by = "MarketCap", ascending = False)
-
-    #filter = tickersRawData['MarketCap'] > 500.0
-    #tickersRawData = tickersRawData[filter]
 
     filePath = os.path.dirname(os.path.abspath(__file__)) + '/data/tickerList.csv'
     print('saving tickers to ' + filePath)
@@ -59,42 +59,42 @@ def fetchTickerList():
 
 tickers = fetchTickerList()
 
-candidates = []
+# candidates = []
 
-threadcount = 10
+# threadcount = 10
 
-def job(id):
-    candidates[id] = []
-    size = (int)(len(tickers) / threadcount)
-    if (id == threadcount - 1):
-        #print("Thread %d from %d to end" % (id, size * id))
-        tickers_t = tickers[size * id :]
-    else:
-        #print("Thread %d from %d to %d" % (id, size * id, size * (id + 1)))
-        tickers_t = tickers[size * id : size * (id + 1)]
-    for ticker in tickers_t:
-        hist = yfinance.Ticker(ticker).history(period ='5d')
-        volumn = hist['Volume']
-        close = hist['Close']
-        print("Thread %d processing %s" %(id, ticker))
-        if (len(volumn) >= 5 and volumn[4] > 100000 and (volumn[2] + volumn[3]) < volumn[4] and (close[4] - close[3]) / close[3] > 0.03):
-            candidates[id].append(ticker)
-    #    command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/strategy1.py --no-log --symbol '%s'" % ticker
-    #    os.system(command)
+# def job(id):
+#     candidates[id] = []
+#     size = (int)(len(tickers) / threadcount)
+#     if (id == threadcount - 1):
+#         #print("Thread %d from %d to end" % (id, size * id))
+#         tickers_t = tickers[size * id :]
+#     else:
+#         #print("Thread %d from %d to %d" % (id, size * id, size * (id + 1)))
+#         tickers_t = tickers[size * id : size * (id + 1)]
+#     for ticker in tickers_t:
+#         hist = yfinance.Ticker(ticker).history(period ='5d')
+#         volumn = hist['Volume']
+#         close = hist['Close']
+#         print("Thread %d processing %s" %(id, ticker))
+#         if (len(volumn) >= 5 and volumn[4] > 100000 and (volumn[2] + volumn[3]) < volumn[4] and (close[4] - close[3]) / close[3] > 0.03):
+#             candidates[id].append(ticker)
+#     #    command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/strategy1.py --no-log --symbol '%s'" % ticker
+#     #    os.system(command)
 
-threads = []
-for i in range(threadcount):
-    candidates.append([])
-    threads.append(threading.Thread(target = job, args = (i,)))
+# threads = []
+# for i in range(threadcount):
+#     candidates.append([])
+#     threads.append(threading.Thread(target = job, args = (i,)))
 
-    threads[i].start()
+#     threads[i].start()
 
-for t in threads:
-    t.join()
+# for t in threads:
+#     t.join()
 
-result = []
-for c in candidates:
-    result += c
+# result = []
+# for c in candidates:
+#     result += c
 
-print(result)
+# print(result)
 

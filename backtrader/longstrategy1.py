@@ -112,7 +112,7 @@ class TestStrategy(bt.Strategy):
             
             mean = statistics.mean(vols)
             stdev = statistics.stdev(vols)
-            if self.datavolume[0] > mean + 2 * stdev:
+            if self.datavolume[0] > mean + 1.5 * stdev:
                 if ((self.dataclose[0] - self.dataclose[-1]) / self.dataclose[-1]) > self.stoplimit and \
                     self.sma5[0] > self.sma20[0]:
 
@@ -269,7 +269,10 @@ if __name__ == '__main__':
     # Set the commission
     cerebro.broker.setcommission(commission=0.0)
 
-    # Run over everything
-    cerebro.run(maxcpus=1)
+    try:
+        # Run over everything
+        cerebro.run(maxcpus=1)
+    except Exception as e:
+        print(args.symbol, e)
 
     #cerebro.plot()

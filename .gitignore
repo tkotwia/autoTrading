@@ -4,3 +4,19 @@ demo/data/
 .vscode/.ropeproject/config.py
 
 .vscode/settings.json
+
+data/daily/us/nasdaq etfs/
+
+data/daily/us/nasdaq stocks/1/
+
+data/daily/us/nyse etfs/
+
+data/daily/us/nyse stocks/1/
+
+data/daily/us/nyse stocks/3/
+
+data/daily/us/nysemkt stocks/
+
+data/daily/us/nyse stocks/2/
+
+data/daily/us/nasdaq stocks/2/

@@ -5,57 +5,33 @@ from glob import glob
 import threading
 import argparse
 
-fullpaths = []
-for root, dirs, files in os.walk('/home/gene/git/autoTrading/demo/data'):
-    for name in files:
-        if ('.txt' in name):
-            fullpaths.append(os.path.abspath(os.path.join(root, name)))
+def getCandidates():
+    symbols = []
+    try:
+        df = pandas.read_csv('/home/gene/git/autoTrading/demo/data/tickerList.csv')
+    except:
+        pass
 
-# fullpaths = fullpaths[0:10]
+    for i in range(2000):
+        symbols.append(df['Symbol'].iloc[i])
+    return symbols
+
+symbols = getCandidates()
 threadcount = 10
 
-mintradevalue = 100000000
-
-def islongcandidate(path):
-    try:
-        df = pandas.read_csv(path)
-    except:
-        return False
-    if len(df.index) > 100 and \
-        (int)(df['<VOL>'].iloc[-1]) > (int)(df['<VOL>'].iloc[-2]) + (int)(df['<VOL>'].iloc[-3]) and\
-        (int)(df['<VOL>'].iloc[-1]) * (float)(df['<CLOSE>'].iloc[-1]) > mintradevalue:
-        return True
-    return False
-
-def isshortcandidate(path):
-    try:
-        df = pandas.read_csv(path)
-    except:
-        return False
-    if len(df.index) > 100 and \
-        (int)(df['<VOL>'].iloc[-1]) < (int)(df['<VOL>'].iloc[-2]) and\
-        ((float)(df['<CLOSE>'].iloc[-1]) - (float)(df['<CLOSE>'].iloc[-2])) / (float)(df['<CLOSE>'].iloc[-2]) > 0.03 and\
-        (int)(df['<VOL>'].iloc[-1]) * (float)(df['<CLOSE>'].iloc[-1]) > mintradevalue:
-        return True
-    return False
-
 def job(id, args):
-    size = (int)(len(fullpaths) / threadcount)
+    size = (int)(len(symbols) / threadcount)
     if (id == threadcount - 1):
         print("Thread %d from %d to end" % (id, size * id))
-        fullpaths_t = fullpaths[size * id :]
+        symbols_t = symbols[size * id :]
     else:
         print("Thread %d from %d to %d" % (id, size * id, size * (id + 1)))
-        fullpaths_t = fullpaths[size * id : size * (id + 1)]
-    for fullpath in fullpaths_t:
-        if args.type == 'long' and islongcandidate(fullpath):
-            head, tail = os.path.split(fullpath)
-            symbol = tail[0: tail.find('.us.txt')]
+        symbols_t = symbols[size * id : size * (id + 1)]
+    for symbol in symbols_t:
+        if args.type == 'long':
             command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/longstrategy1.py --log 'csv' --source 'local' --symbol '%s'" % symbol
             os.system(command)
-        if args.type == 'short' and isshortcandidate(fullpath):
-            head, tail = os.path.split(fullpath)
-            symbol = tail[0: tail.find('.us.txt')]
+        if args.type == 'short':
             command = "/usr/bin/python3 /home/gene/git/autoTrading/backtrader/shortstrategy1.py --log 'csv' --source 'local' --symbol '%s'" % symbol
             os.system(command)
 
