@@ -36,9 +36,12 @@ class TestStrategy(bt.Strategy):
         self.age = 0
         self.stoplimit = self.p.stoplimit / 100
         self.history = []
+        self.windates = []
+        self.lossdates = []
         self.winexception = 0
         self.lossexception = 0
         self.lastbuydate = None
+        self.overwritepnl = 0
 
         # Add a MovingAverageSimple indicator
         self.sma5 = bt.indicators.SimpleMovingAverage(
@@ -61,8 +64,6 @@ class TestStrategy(bt.Strategy):
                     'BUY EXECUTED, Price: %.2f, Cost: %.2f' %
                     (order.executed.price,
                     order.executed.value))
-
-                self.age = 0
 
                 limit = order.executed.price * (1 + self.stoplimit)
                 stop = order.executed.price * (1 - self.stoplimit)
@@ -98,10 +99,17 @@ class TestStrategy(bt.Strategy):
         if not trade.isclosed:
             return
 
-        percentage = trade.pnl / trade.price
+        if self.overwritepnl != 0:
+            percentage = self.overwritepnl / trade.price
+        else:
+            percentage = trade.pnl / trade.price
         self.log('OPERATION PROFIT, GROSS %.2f, percentage %.2f' %
-                 (trade.pnl, percentage))
+                (trade.pnl, percentage))
         self.history.append(percentage)
+        if percentage >= 0.03:
+            self.windates.append(self.datas[0].datetime.date(0))
+        elif percentage <= -0.03:
+            self.lossdates.append(self.datas[0].datetime.date(0))
 
     def next(self):
         # Check if we are in the market
@@ -120,6 +128,14 @@ class TestStrategy(bt.Strategy):
                     # self.buy(exectype = bt.Order.Limit, price=self.dataclose[0], valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=2))
                     self.buy()
                     self.lastbuydate = self.datas[0].datetime.date(0)
+                    self.age = 0
+                    self.overwritepnl = 0
+        else:
+            self.age += 1
+            if self.age == 1:
+                stop = min(self.datas[0].low[-1], self.dataclose[-1] * 0.95)
+                if (self.datas[0].low[0] < stop):
+                    self.overwritepnl = stop - self.datas[0].open[0]
 
     def kelly(self):
         history = []
@@ -182,6 +198,10 @@ class TestStrategy(bt.Strategy):
                 losscount += 1
                 tradecount += 1
         self.log(history)
+
+        if self.params.printlog == 'full':
+            print(self.windates)
+            print(self.lossdates)
 
         if self.params.printlog == 'csv':
             if self.datas[0].datetime.date(0) == self.lastbuydate:
