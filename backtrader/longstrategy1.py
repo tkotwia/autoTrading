@@ -256,8 +256,11 @@ if __name__ == '__main__':
             todate=end,
             reverse=False)
     elif args.source == 'local':
-        data = load_generic_data(args.symbol, start, end)
-        benchmark = load_generic_data('vti', start, end)
+        try:
+            data = load_generic_data(args.symbol, start, end)
+            benchmark = load_generic_data('vti', start, end)
+        except Exception as e:
+            print(args.symbol, e)
 
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
