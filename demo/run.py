@@ -22,10 +22,10 @@ threadcount = 10
 def job(id, args):
     size = (int)(len(symbols) / threadcount)
     if (id == threadcount - 1):
-        print("Thread %d from %d to end" % (id, size * id))
+        # print("Thread %d from %d to end" % (id, size * id))
         symbols_t = symbols[size * id :]
     else:
-        print("Thread %d from %d to %d" % (id, size * id, size * (id + 1)))
+        # print("Thread %d from %d to %d" % (id, size * id, size * (id + 1)))
         symbols_t = symbols[size * id : size * (id + 1)]
     for symbol in symbols_t:
         if args.type == 'long':
