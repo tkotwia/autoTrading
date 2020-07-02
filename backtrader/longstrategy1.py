@@ -14,7 +14,6 @@ import backtrader as bt
 class TestStrategy(bt.Strategy):
     params = (
         ('stoplimit', 3),
-        ('maxage', 2),
         ('printlog', 'full')
     )
 
@@ -68,8 +67,8 @@ class TestStrategy(bt.Strategy):
                 limit = order.executed.price * (1 + self.stoplimit)
                 stop = order.executed.price * (1 - self.stoplimit)
                 self.log('SELL CREATE limit %.2f stop %.2f'%  (limit, stop))
-                self.stoporder.append(self.sell(exectype = bt.Order.StopLimit, price=stop, valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage)))
-                self.stoporder.append(self.sell(exectype = bt.Order.Limit, price=limit, valid = self.datas[0].datetime.date(0) + datetime.timedelta(days=self.p.maxage), oco=self.stoporder[0]))
+                self.stoporder.append(self.sell(exectype = bt.Order.StopLimit, price=stop, valid = 0))
+                self.stoporder.append(self.sell(exectype = bt.Order.Limit, price=limit, valid = 0, oco=self.stoporder[0]))
                 return
             else:  # Sell
                 selltype = ""
@@ -139,11 +138,13 @@ class TestStrategy(bt.Strategy):
                     self.age = 0
                     self.overwritepnl = 0
         else:
+            print('low', self.datas[0].low[0])
             self.age += 1
             if self.age == 1:
                 stop = min(self.datas[0].low[-1], self.dataclose[-1] * 0.95)
                 if (self.datas[0].low[0] < stop):
                     self.overwritepnl = stop - self.datas[0].open[0]
+                    print('pnl', self.overwritepnl)
 
     def kelly(self):
         history = []
@@ -220,7 +221,7 @@ class TestStrategy(bt.Strategy):
             else:
                 winrate = wincount / tradecount
 
-            self.log('%s Stoplimit %.2f maxAge %d Kelly %.2f win %d loss %d total %d winrate %.2f winexception %d lossexception %d tradevalue %d' % (self.getdatanames()[0], self.stoplimit, self.p.maxage, self.kelly(), wincount, losscount, tradecount, winrate, self.winexception, self.lossexception, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
+            self.log('%s Stoplimit %.2f Kelly %.2f win %d loss %d total %d winrate %.2f winexception %d lossexception %d tradevalue %d' % (self.getdatanames()[0], self.stoplimit, self.kelly(), wincount, losscount, tradecount, winrate, self.winexception, self.lossexception, self.dataclose[0] * self.datavolume[0] / 1000000), doprint=True)
 
 def parse_args(pargs=None):
     parser = argparse.ArgumentParser(
