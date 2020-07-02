@@ -138,13 +138,11 @@ class TestStrategy(bt.Strategy):
                     self.age = 0
                     self.overwritepnl = 0
         else:
-            print('low', self.datas[0].low[0])
             self.age += 1
             if self.age == 1:
                 stop = min(self.datas[0].low[-1], self.dataclose[-1] * 0.95)
                 if (self.datas[0].low[0] < stop):
                     self.overwritepnl = stop - self.datas[0].open[0]
-                    print('pnl', self.overwritepnl)
 
     def kelly(self):
         history = []
@@ -194,23 +192,21 @@ class TestStrategy(bt.Strategy):
         return p - (q / b)
         
     def stop(self):
-        history = ""
         wincount = 0
         losscount = 0
         tradecount = 0
         for i in self.history:
-            history += " %.1f" % (i * 100)
             if i > 0:
                 wincount += 1
                 tradecount += 1
             elif i < 0:
                 losscount += 1
                 tradecount += 1
-        self.log(history)
 
         if self.params.printlog == 'full':
-            print(self.windates)
-            print(self.lossdates)
+            print(["%.2f" % e for e in self.history])
+            print([date.strftime('%Y%m%d') for date in self.windates])
+            print([date.strftime('%Y%m%d') for date in self.lossdates])
 
         if self.params.printlog == 'csv':
             if self.datas[0].datetime.date(0) == self.lastbuydate:
