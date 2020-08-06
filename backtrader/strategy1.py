@@ -128,19 +128,13 @@ class TestStrategy(bt.Strategy):
         return data
 
     def _caculate_value(self):
-        max_diff = -1000
-        min_diff = 1000
+        c = []
         for i in range(0, -11, -1):
-            diff = (self.dataclose[i] - self.dataclose[-11]) / self.dataclose[-11]
-            if (diff > max_diff):
-                max_diff = diff
-            elif (diff < min_diff):
-                min_diff = diff
-
-        if (min_diff > 0):
-            return 0
-        if (max_diff < 0):
+            c.append(self.dataopen[i])
+        if (c[-1] == max(c)):
             return 1
+        if (c[-1] == min(c)):
+            return 0
         return 2
 
     def next(self):
@@ -212,7 +206,8 @@ if __name__ == '__main__':
     cerebro = bt.Cerebro()
 
     start = datetime.datetime(2007, 1, 1)
-    end = datetime.datetime.now()
+    # end = datetime.datetime.now()
+    end = datetime.datetime(2020, 1, 1)
     train_end = datetime.datetime(2017, 1, 1)
 
     strats = cerebro.addstrategy(TestStrategy, printlog = args.log, train_end = train_end)
