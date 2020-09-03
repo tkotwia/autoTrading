@@ -29,46 +29,73 @@ class TestStrategy(bt.Strategy):
         # Keep a reference to the "close" line in the data[0] dataseries
         self.dataclose = self.datas[0].close
         self.dataopen = self.datas[0].open
+        self.datahigh = self.datas[0].high
+        self.datalow = self.datas[0].low
         self.datavolume = self.datas[0].volume
 
-        #initialize cnn
-        self.cnn = Cnn()
+        #initialize cnns
+        self.cnns = []
+        for i in range(1):
+            filename = '/home/gene/git/autoTrading/backtrader/model/' + self.getdatanames()[0] + str(i) + '.h5'
+            self.cnns.append(Cnn(filename))
         # Add a MovingAverageSimple indicator
         self.rsi60 = bt.indicators.RSI_Safe(self.datas[0], period=100)
         self.history = []
+        self.holding_days = []
         
-        self.rsi = []
-        self.rsiema = []
-        self.williams = []
-        self.wma = []
-        self.ema = []
-        self.sma = []
-        self.hma = []
-        self.tripleema = []
-        self.cci = []
-        self.macd = []
-        self.ppo = []
-        self.roc = []
-        self.dmi = []
-        self.bb = []
-        self.md = []
+        self.indicator_count = 22
+        self.indicators = []
+        for i in range(self.indicator_count):
+            self.indicators.append([])
+
         for i in range(6, 21):
-            self.rsi.append(bt.indicators.RSI_Safe(self.datas[0], period=i))
-            self.rsiema.append(bt.indicators.RSI_EMA(self.datas[0], period=i, safediv=True))
-            self.williams.append(bt.indicators.WilliamsR(self.datas[0], period=i))
-            self.wma.append(bt.indicators.WeightedMovingAverage(self.datas[0], period=i))
-            self.ema.append(bt.indicators.ExponentialMovingAverage(self.datas[0], period=i))
-            self.sma.append(bt.indicators.SimpleMovingAverage(self.datas[0], period=i))
-            self.hma.append(bt.indicators.HullMovingAverage(self.datas[0], period=i))
-            self.tripleema.append(bt.indicators.TripleExponentialMovingAverage(self.datas[0], period=i))
-            self.cci.append(bt.indicators.CommodityChannelIndex(self.datas[0], period=i))
-            self.macd.append(bt.indicators.MACD(self.datas[0], period_me1=i))
-            self.ppo.append(bt.indicators.PercentagePriceOscillator(self.datas[0], period1=i))
-            self.roc.append(bt.indicators.CommodityChannelIndex(self.datas[0], period=i))
-            self.dmi.append(bt.indicators.DirectionalMovementIndex(self.datas[0], period=i))
-            self.bb.append(bt.indicators.BollingerBands(self.datas[0], period=i))
-            self.md.append(bt.indicators.MeanDeviation(self.datas[0], period=i))
-            # self.md.append(bt.indicators.MovingAverageSimple(self.datas[1], period=i))
+            j = 0
+            self.indicators[j].append(bt.indicators.RSI_Safe(self.datas[0], period=i)) # momentum
+            j += 1
+            self.indicators[j].append(bt.indicators.WilliamsR(self.datas[0], period=i)) # momentum
+            j += 1
+            self.indicators[j].append(bt.talib.MFI(self.datahigh, self.datalow, self.dataclose, self.datavolume, period=i)) # momentum
+            j += 1
+            self.indicators[j].append(bt.indicators.RateOfChange(self.datas[0], period=i)) # momentum
+            j += 1
+            self.indicators[j].append(bt.talib.CMO(self.dataclose, period=i)) # momentum
+            j += 1
+            self.indicators[j].append(bt.talib.SMA(self.dataclose, period=i))
+            j += 1
+            self.indicators[j].append(bt.talib.SMA(self.dataopen, period=i))
+            j += 1
+            self.indicators[j].append(bt.indicators.ExponentialMovingAverage(self.datas[0], period=i))
+            j += 1
+            self.indicators[j].append(bt.indicators.WeightedMovingAverage(self.datas[0], period=i))
+            j += 1
+            self.indicators[j].append(bt.indicators.HullMovingAverage(self.datas[0], period=i))
+            j += 1
+            self.indicators[j].append(bt.indicators.Trix(self.datas[0], period=i)) # trend
+            j += 1
+            self.indicators[j].append(bt.indicators.CommodityChannelIndex(self.datas[0], period=i)) # trend
+            j += 1
+            self.indicators[j].append(bt.indicators.DetrendedPriceOscillator(self.datas[0], period=i)) # trend
+            j += 1
+            self.indicators[j].append(bt.indicators.DirectionalMovementIndex(self.datas[0], period=i)) # trend
+            j += 1
+            self.indicators[j].append(bt.indicators.BollingerBands(self.datas[0], period=i)) # volatility
+            j += 1
+
+            self.indicators[j].append(bt.indicators.PercentagePriceOscillator(self.datas[0], period1=i))
+            j += 1
+            self.indicators[j].append(bt.indicators.MeanDeviation(self.datas[0], period=i))
+            # j += 1
+            # self.indicators[j].append(bt.talib.VAR(self.dataclose, period=i, nbdev=1))
+            j += 1
+            self.indicators[j].append(bt.talib.TRIMA(self.dataclose, period=i))
+            j += 1
+            self.indicators[j].append(bt.talib.ADXR(self.datahigh, self.datalow, self.dataclose, period=i))
+            j += 1
+            self.indicators[j].append(bt.talib.AROONOSC(self.datahigh, self.datalow, period=i))
+            j += 1
+            self.indicators[j].append(bt.talib.ATR(self.datahigh, self.datalow, self.dataclose, period=i))
+            j += 1
+            self.indicators[j].append(bt.talib.LINEARREG(self.dataopen, period=i))
 
     def notify_order(self, order):
         if order.status in [order.Submitted, order.Accepted]:
@@ -83,10 +110,13 @@ class TestStrategy(bt.Strategy):
                     'BUY EXECUTED, Price: %.2f, Cost: %.2f' %
                     (order.executed.price,
                     order.executed.value))
+
             else:  # Sell
                 self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f' %
                         (order.executed.price,
-                        order.executed.value))  
+                        order.executed.value))
+                
+                # self.stoporder.clear()
 
         elif order.status in [order.Canceled]:
             self.log('Order Canceled')
@@ -102,29 +132,21 @@ class TestStrategy(bt.Strategy):
             return
 
         percentage = trade.pnl / trade.price
-        self.log('OPERATION PROFIT, GROSS %.2f, percentage %.2f' %
-                (trade.pnl, percentage))
+        self.log('OPERATION PROFIT, GROSS %.2f, percentage %.2f, days %d' %
+                (trade.pnl, percentage, self.holding_day))
 
         self.history.append(percentage)
+        self.holding_days.append(self.holding_day)
 
     def _parse_data(self, index):
         data = []
-        for i in range(0, 15):
-            data.append(self.rsi[i][index])
-            data.append(self.rsiema[i][index])
-            data.append(self.williams[i][index])
-            data.append(self.wma[i][index])
-            data.append(self.ema[i][index])
-            data.append(self.sma[i][index])
-            data.append(self.hma[i][index])
-            data.append(self.tripleema[i][index])
-            data.append(self.cci[i][index])
-            data.append(self.macd[i][index])
-            data.append(self.ppo[i][index])
-            data.append(self.roc[i][index])
-            data.append(self.dmi[i][index])
-            data.append(self.bb[i][index])
-            data.append(self.md[i][index])
+        for i in range(15):
+            for j in range(self.indicator_count):
+                data.append(self.indicators[j][i][index])
+            data.append(self.dataopen[index - i])
+            data.append(self.dataclose[index - i])
+            data.append(self.datahigh[index - i])
+            data.append(self.datalow[index - i])
         return data
 
     def _caculate_value(self):
@@ -141,29 +163,46 @@ class TestStrategy(bt.Strategy):
         if self.datas[0].datetime.date(0) <= self.params.train_end.date():
             data = self._parse_data(-11)
             val = self._caculate_value()
-            self.cnn.add_train_data(data, val)
+            for i in range(1):
+                self.cnns[i].add_train_data(data, val)
             
         else:
-            if not self.cnn.is_trained():
-                self.log('start training...')
-                self.cnn.start_traning()
+            for i in range(1):
+                if not self.cnns[i].is_trained():
+                    self.log('start training...')
+                    self.cnns[i].start_traning()
 
             data = self._parse_data(0)
-            predict_value = self.cnn.predict(data)
-            if not self.position:
+            count0 = 0
+            count1 = 0
+            for i in range(1):
+                predict_value = self.cnns[i].predict(data)
                 if (predict_value == 0):
+                    count0 += 1
+                if (predict_value == 1):
+                    count1 += 1
+
+            if not self.position:
+                if (count0 >= 1):
                     self.buy()
+                    self.holding_day = 0
             else:
-                if predict_value == 1:
+                self.holding_day += 1
+                if (count1 >= 1):
                     self.close()
 
     def stop(self):
+        print(self.holding_days)
+        print(sum(self.holding_days))
         print(self.history)
         print(sum(self.history))
         result = 1
         for i in self.history:
             result = result * (1 + i)
         print(result)
+        with open('/home/gene/git/autoTrading/abc', 'a') as the_file:
+            s = str(result) + '\n' 
+            the_file.write(s)
 
 def parse_args(pargs=None):
     parser = argparse.ArgumentParser(
@@ -175,6 +214,8 @@ def parse_args(pargs=None):
     parser.add_argument('--log', required=False, default='full', help = 'log type')
 
     parser.add_argument('--source', required=False, default='yahoo', help='source type')
+
+    parser.add_argument('--year', required=False, default='2020', help='year to test')
 
     return parser.parse_args()
 
@@ -205,10 +246,11 @@ if __name__ == '__main__':
     # Create a cerebro entity
     cerebro = bt.Cerebro()
 
-    start = datetime.datetime(2007, 1, 1)
+    year = int(args.year)
+    start = datetime.datetime(year - 5, 1, 1)
     # end = datetime.datetime.now()
-    end = datetime.datetime(2020, 1, 1)
-    train_end = datetime.datetime(2017, 1, 1)
+    end = datetime.datetime(year + 1, 1, 1)
+    train_end = datetime.datetime(year, 1, 1)
 
     strats = cerebro.addstrategy(TestStrategy, printlog = args.log, train_end = train_end)
 

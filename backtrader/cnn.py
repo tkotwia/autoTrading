@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow.keras.models import Sequential, load_model, Model
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.layers import Conv2D, MaxPool2D, Flatten, LeakyReLU
@@ -5,22 +6,95 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 from tensorflow.keras import optimizers
 from tensorflow.keras import regularizers
 from tensorflow.keras.initializers import RandomUniform, RandomNormal
-from tensorflow.keras.models import load_model
 from tensorflow.keras import backend as K
 from tensorflow.keras.utils import get_custom_objects
 import numpy as np
+from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.utils import compute_class_weight
 from matplotlib import pyplot as plt
 import os
 
+def f1_weighted(y_true, y_pred):
+    y_true_class = tf.math.argmax(y_true, axis=1, output_type=tf.dtypes.int32)
+    y_pred_class = tf.math.argmax(y_pred, axis=1, output_type=tf.dtypes.int32)
+    conf_mat = tf.math.confusion_matrix(y_true_class, y_pred_class)  # can use conf_mat[0, :], tf.slice()
+    # precision = TP/TP+FP, recall = TP/TP+FN
+    rows, cols = conf_mat.get_shape()
+    size = y_true_class.get_shape()[0]
+    precision = tf.constant([0, 0, 0])  # change this to use rows/cols as size
+    recall = tf.constant([0, 0, 0])
+    class_counts = tf.constant([0, 0, 0])
+
+    def get_precision(i, conf_mat):
+        print("prec check", conf_mat, conf_mat[i, i], tf.reduce_sum(conf_mat[:, i]))
+        precision[i].assign(conf_mat[i, i] / tf.reduce_sum(conf_mat[:, i]))
+        recall[i].assign(conf_mat[i, i] / tf.reduce_sum(conf_mat[i, :]))
+        tf.add(i, 1)
+        return i, conf_mat, precision, recall
+
+    def tf_count(i):
+        elements_equal_to_value = tf.equal(y_true_class, i)
+        as_ints = tf.cast(elements_equal_to_value, tf.int32)
+        count = tf.reduce_sum(as_ints)
+        class_counts[i].assign(count)
+        tf.add(i, 1)
+        return count
+
+    def condition(i, conf_mat):
+        return tf.less(i, 3)
+
+    i = tf.constant(3)
+    i, conf_mat = tf.while_loop(condition, get_precision, [i, conf_mat])
+
+    i = tf.constant(3)
+    c = lambda i: tf.less(i, 3)
+    b = tf_count(i)
+    tf.while_loop(c, b, [i])
+
+    weights = tf.math.divide(class_counts, size)
+    numerators = tf.math.multiply(tf.math.multiply(precision, recall), tf.constant(2))
+    denominators = tf.math.add(precision, recall)
+    f1s = tf.math.divide(numerators, denominators)
+    weighted_f1 = tf.reduce_sum(tf.math.multiply(f1s, weights))
+    return weighted_f1
+
+
+def f1_metric(y_true, y_pred):
+    """
+    this calculates precision & recall
+    """
+
+    def recall(y_true, y_pred):
+        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))  # mistake: y_pred of 0.3 is also considered 1
+        possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+        recall = true_positives / (possible_positives + K.epsilon())
+        return recall
+
+    def precision(y_true, y_pred):
+        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+        precision = true_positives / (predicted_positives + K.epsilon())
+        return precision
+
+    precision = precision(y_true, y_pred)
+    recall = recall(y_true, y_pred)
+    # y_true_class = tf.math.argmax(y_true, axis=1, output_type=tf.dtypes.int32)
+    # y_pred_class = tf.math.argmax(y_pred, axis=1, output_type=tf.dtypes.int32)
+    # conf_mat = tf.math.confusion_matrix(y_true_class, y_pred_class)
+    # tf.Print(conf_mat, [conf_mat], "confusion_matrix")
+
+    return 2 * ((precision * recall) / (precision + recall + K.epsilon()))
+
+
+get_custom_objects().update({"f1_metric": f1_metric, "f1_weighted": f1_weighted})
+
 class Cnn:
     
-    def __init__(self):
+    def __init__(self, model_path):
         self.dim = 15
-        self.training_data = np.zeros((0,self.dim,self.dim))
-        self.training_val = np.zeros((0,1))
+        self.model_path = model_path
 
     def _create_model(self):
         params = {'batch_size': 60, 'conv2d_layers': {'conv2d_do_1': 0.0, 'conv2d_filters_1': 30,
@@ -77,7 +151,7 @@ class Cnn:
             optimizer = optimizers.SGD(lr=params["lr"], decay=1e-6, momentum=0.9, nesterov=True)
         elif params["optimizer"] == 'adam':
             optimizer = optimizers.Adam(learning_rate=params["lr"], beta_1=0.9, beta_2=0.999, amsgrad=False)
-        model.compile(loss='categorical_crossentropy', optimizer=optimizer)
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy', f1_metric])
         # from keras.utils.vis_utils import plot_model use this too for diagram with plot
         model.summary(print_fn=lambda x: print(x + '\n'))
         self.model = model
@@ -94,8 +168,13 @@ class Cnn:
 
     def _preprocess_data(self):
         import collections
+        print(self.training_data.shape)
         print(self.training_val.shape)
         print(collections.Counter(self.training_val.ravel()))
+
+        self._feature_selection()
+        self.training_data = self._filter_features(self.training_data)
+        self.training_data = self._reshape_as_image(self.training_data)
 
         self._get_sample_weights()
 
@@ -118,36 +197,64 @@ class Cnn:
                                                                                                             test_size = 1-ratio,
                                                                                                             shuffle=True,
                                                                                                             stratify=self.training_val)
-
-    def _plot_history(self, history):
-        plt.figure()
-        plt.plot(history.history['loss'])
-        plt.plot(history.history['val_loss'])
-        plt.plot(history.history['accuracy'])
-        plt.plot(history.history['val_accuracy'])
-        plt.plot(history.history['f1_metric'])
-        plt.plot(history.history['val_f1_metric'])
-        plt.title('Model Metrics')
-        plt.ylabel('Loss')
-        plt.xlabel('Epoch')
-        plt.legend(['train_loss', 'val_loss', 'train_acc', 'val_acc', 'f1', 'val_f1'], loc='upper left')
-        plt.savefig(os.path.join("/home/gene/git/autoTrading/backtrader/history", 'plt'))
     
+    def _feature_selection(self):
+        num_features = 225  # should be a perfect square
+        topk = 300
+        select_k_best = SelectKBest(f_classif, k=topk)
+        select_k_best.fit(self.training_data, self.training_val)
+        features_A = select_k_best.get_support(indices=True)
+
+        select_k_best = SelectKBest(mutual_info_classif, k=topk)
+        select_k_best.fit(self.training_data, self.training_val)
+        features_B = select_k_best.get_support(indices=True)
+
+        self.features = features_A[np.in1d(features_A, features_B)]
+        if len(self.features) < num_features:
+            raise Exception(
+                'number of common features found {} < {} required features. Increase "topK"'.format(len(self.features),
+                                                                                                    num_features))
+        print(len(self.features))
+        self.features = sorted(self.features[0:num_features])    
+
+    def _filter_features(self, input):
+        output = input
+        columns = output.shape[1]
+        for i in reversed(range(columns)):
+            if i not in self.features:
+                output = np.delete(output, i, axis=1)
+        return output
+
+    def _reshape_as_image(self, input):
+        x_temp = np.zeros((len(input), self.dim, self.dim))
+        for i in range(input.shape[0]):
+            x_temp[i] = np.reshape(input[i], (self.dim, self.dim))
+        return x_temp
+
     def add_train_data(self, data, val):
         scaler = MinMaxScaler()
-        d = scaler.fit_transform(np.array(data).reshape(self.dim, self.dim)).reshape(1, self.dim, self.dim)
-        self.training_data = np.append(self.training_data, d, axis=0)
-        self.training_val = np.append(self.training_val, np.array(val).reshape(1,1), axis=0)
+        d = scaler.fit_transform(np.array(data).reshape(self.dim, -1)).reshape(1, -1)
+        if hasattr(self, 'training_data'):
+            self.training_data = np.append(self.training_data, d, axis=0)
+        else:
+            self.training_data = d
+
+        if hasattr(self, 'training_val'):
+            self.training_val = np.append(self.training_val, np.array(val).reshape(1,1), axis=0)
+        else:
+            self.training_val = np.array(val).reshape(1,1)
 
     def is_trained(self):
-        try:
-            self.model
-        except:
-            return False
-        else:
-            return True
+        return hasattr(self, 'model')
 
     def start_traning(self):
+        if os.path.exists(self.model_path):
+            print('load model...')
+            self.one_hot_enc = OneHotEncoder(sparse=False, categories='auto')
+            self.one_hot_enc.fit(self.training_val)
+            self.model = load_model(self.model_path)
+            return
+
         self._create_model()
         self._preprocess_data()
         es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=100, min_delta=0.0001)
@@ -161,10 +268,16 @@ class Cnn:
                                 validation_data=(self.validation_data, self.validation_val),
                                 callbacks=[es, mcp, rlp],
                                 sample_weight=self.sample_weights)
+        
+        # print('save model...')
+        # self.model.save(self.model_path) 
+
 
     def predict(self, data):
         scaler = MinMaxScaler()
-        d = scaler.fit_transform(np.array(data).reshape(self.dim, self.dim)).reshape(1, self.dim, self.dim)
+        d = scaler.fit_transform(np.array(data).reshape(self.dim, -1)).reshape(1, -1)
+        d = self._filter_features(d)
+        d = self._reshape_as_image(d)
         d = np.stack((d,) * 3, axis=-1)
         predict_raw = self.model.predict(d)
         result = self.one_hot_enc.inverse_transform(predict_raw)
