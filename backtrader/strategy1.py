@@ -43,7 +43,7 @@ class TestStrategy(bt.Strategy):
         self.history = []
         self.holding_days = []
         
-        self.indicator_count = 22
+        self.indicator_count = 15
         self.indicators = []
         for i in range(self.indicator_count):
             self.indicators.append([])
@@ -81,21 +81,21 @@ class TestStrategy(bt.Strategy):
             self.indicators[j].append(bt.indicators.BollingerBands(self.datas[0], period=i)) # volatility
             j += 1
 
-            self.indicators[j].append(bt.indicators.PercentagePriceOscillator(self.datas[0], period1=i))
-            j += 1
-            self.indicators[j].append(bt.indicators.MeanDeviation(self.datas[0], period=i))
+            # self.indicators[j].append(bt.indicators.PercentagePriceOscillator(self.datas[0], period1=i))
             # j += 1
-            # self.indicators[j].append(bt.talib.VAR(self.dataclose, period=i, nbdev=1))
-            j += 1
-            self.indicators[j].append(bt.talib.TRIMA(self.dataclose, period=i))
-            j += 1
-            self.indicators[j].append(bt.talib.ADXR(self.datahigh, self.datalow, self.dataclose, period=i))
-            j += 1
-            self.indicators[j].append(bt.talib.AROONOSC(self.datahigh, self.datalow, period=i))
-            j += 1
-            self.indicators[j].append(bt.talib.ATR(self.datahigh, self.datalow, self.dataclose, period=i))
-            j += 1
-            self.indicators[j].append(bt.talib.LINEARREG(self.dataopen, period=i))
+            # self.indicators[j].append(bt.indicators.MeanDeviation(self.datas[0], period=i))
+            # # j += 1
+            # # self.indicators[j].append(bt.talib.VAR(self.dataclose, period=i, nbdev=1))
+            # j += 1
+            # self.indicators[j].append(bt.talib.TRIMA(self.dataclose, period=i))
+            # j += 1
+            # self.indicators[j].append(bt.talib.ADXR(self.datahigh, self.datalow, self.dataclose, period=i))
+            # j += 1
+            # self.indicators[j].append(bt.talib.AROONOSC(self.datahigh, self.datalow, period=i))
+            # j += 1
+            # self.indicators[j].append(bt.talib.ATR(self.datahigh, self.datalow, self.dataclose, period=i))
+            # j += 1
+            # self.indicators[j].append(bt.talib.LINEARREG(self.dataopen, period=i))
 
     def notify_order(self, order):
         if order.status in [order.Submitted, order.Accepted]:
@@ -143,10 +143,6 @@ class TestStrategy(bt.Strategy):
         for i in range(15):
             for j in range(self.indicator_count):
                 data.append(self.indicators[j][i][index])
-            data.append(self.dataopen[index - i])
-            data.append(self.dataclose[index - i])
-            data.append(self.datahigh[index - i])
-            data.append(self.datalow[index - i])
         return data
 
     def _caculate_value(self):
@@ -209,7 +205,7 @@ def parse_args(pargs=None):
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Sample for Order Target')
 
-    parser.add_argument('--symbol', required=False, default='SPY', help='Symbol to backtest')
+    parser.add_argument('--symbol', required=False, default='spy', help='Symbol to backtest')
 
     parser.add_argument('--log', required=False, default='full', help = 'log type')
 
